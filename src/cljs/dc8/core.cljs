@@ -8,7 +8,7 @@
 (def challenge-string "This is the first sentence. This is another sentence. And we have one more.")
 (def string-with-returns (clojure.string/replace challenge-string #"\.\s" ".\n"))
 (def split-string (clojure.string/split string-with-returns #""))
-(def delay-time 500)
+(def delay-time 1000)
 (def letter-chan (chan))
 
 (defonce app-state (r/atom {:text ""
