@@ -8,10 +8,12 @@
 (def challenge-string "This is the first sentence. This is another sentence. And we have one more.")
 (def string-with-returns (clojure.string/replace challenge-string #"\.\s" ".\n"))
 (def split-string (clojure.string/split string-with-returns #""))
-
+(def delay-time 500)
 (def letter-chan (chan))
 
-(defonce app-state (r/atom {:text ""}))
+(defonce app-state (r/atom {:text ""
+                            :processing?  false
+                            :processed? false}))
 
 (defn update-text! [f & args]
   (apply swap! app-state update :text f args))
@@ -20,26 +22,51 @@
   (update-text! str l))
 
 (defn clear-text! []
-  (reset! app-state {:text ""}))
+  (swap! app-state assoc  :text ""))
 
-(go-loop [received (<! letter-chan)]
-  (if (nil? received)
-    (prn "channel closed")
-    (do
-      (add-letter! received)
-      (<! (timeout 1000))
-      (recur (<! letter-chan)))))
+(defn type-writer [c]
+  (go-loop [received (<! c)]
+    (if (nil? received)
+      (swap! app-state assoc  :processed?  true)
+      (do
+        (add-letter! received)
+        (<! (timeout delay-time))
+        (recur (<! c))))))
 
 (defn header []
   [:h1 "Welcome to the Kindred Bay Daily Challenge 8"])
+
+(defn go-button-click  []
+  (swap! app-state assoc :processing? true)
+  (let [c (chan)]
+    (type-writer c)
+    (onto-chan c split-string)
+    ))
+
+(defn go-button []
+  [:button {
+            :on-click go-button-click
+           :disabled (:processing? @app-state) }
+   "Go"])
+
+(defn clear-button-click []
+  (clear-text!)
+  (swap! app-state assoc :processed? false)
+  (swap! app-state assoc  :processing?  false))
+
+(defn clear-button []
+  [:button {
+            :disabled (not (:processed? @app-state))
+            :on-click clear-button-click}
+   "Clear"])
 
 (defn page []
   [:div {:style {:white-space "pre-wrap"}}
    (header)
    [:p (str (:text @app-state))]
    [:br]
-   [:button {:on-click #(onto-chan letter-chan split-string false) } "Go"]
-   [:button {:on-click clear-text!}"Clear"]
+   (go-button)
+   (clear-button)
    ])
 
 (defn reload []
