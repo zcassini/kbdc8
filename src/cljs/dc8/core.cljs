@@ -27,7 +27,7 @@
     (prn "channel closed")
     (do
       (add-letter! received)
-      (<! (timeout 1))
+      (<! (timeout 1000))
       (recur (<! letter-chan)))))
 
 (defn header []
